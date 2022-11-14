@@ -1,14 +1,8 @@
 import cv2
 import time
 
-camera = cv2.VideoCapture(0)  # computer camera
-# camera = cv2.VideoCapture("Koijot.mp4 ")  # downloaded video
-cv2.namedWindow("computer camera online")
 
-frame = camera.read()
-
-
-def face_capture(frame, sign_exit):
+def face_capture(camera, sign_exit):
     prev_time = time.perf_counter()
 
     eye_cascade = cv2.CascadeClassifier('haarcascade_eye.xml')
@@ -31,7 +25,7 @@ def face_capture(frame, sign_exit):
     center_eh = int()
 
     while sign_exit:
-        ret = camera.read()
+        ret, frame = camera.read()
         gray = cv2.cvtColor(frame, cv2.IMREAD_COLOR)  # or cv2.COLOR_BGR2GRAY as option
         if not ret:
             print("failed to grab frame")
@@ -54,8 +48,7 @@ def face_capture(frame, sign_exit):
 
             for (x, y, w, h) in faces:
                 cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)  # face
-                eye_detecting(x, y, w, h, gray, frame, eye_cascade, eye, h_half, restriction_of_eye_gray,
-                              restriction_of_eye_gray_color)
+                eye_detecting(eye, restriction_of_eye_gray_color)
 
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)  # face
         cv2.circle(restriction_of_eye_gray_color, (ex + center_ew, ey + center_eh), 20, (2, 244, 255), thickness=2,
@@ -70,8 +63,7 @@ def face_capture(frame, sign_exit):
     cv2.DestroyALLWIndows()
 
 
-def eye_detecting(x, y, w, h, gray, frame, eye_cascade, eye, h_half, restriction_of_eye_gray,
-                  restriction_of_eye_gray_color):
+def eye_detecting(eye, restriction_of_eye_gray_color):
     for (ex, ey, ew, eh) in eye:
         center_ew = round(ew / 2)
         center_eh = round(eh / 2)
@@ -96,8 +88,14 @@ def keyboard_input(frame, sign_exit, img_counter, k):  # taking photo & exit
 def main():
     sign_exit = True
 
+    camera = cv2.VideoCapture(0)  # computer camera
+    # camera = cv2.VideoCapture("Koijot.mp4 ")  # downloaded video
+    cv2.namedWindow("computer camera online")
+
+
+
     while sign_exit:
-        face_capture(frame, sign_exit)
+        face_capture(camera, sign_exit)
 
 
 main()
