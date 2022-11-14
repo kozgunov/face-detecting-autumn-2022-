@@ -1,0 +1,103 @@
+import cv2
+import time
+
+camera = cv2.VideoCapture(0)  # computer camera
+# camera = cv2.VideoCapture("Koijot.mp4 ")  # downloaded video
+cv2.namedWindow("computer camera online")
+
+frame = camera.read()
+
+
+def face_capture(frame, sign_exit):
+    prev_time = time.perf_counter()
+
+    eye_cascade = cv2.CascadeClassifier('haarcascade_eye.xml')
+    face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
+
+    # left_eye_cascade = cv2.CascadeClassifier('haarcascade_lefteye_2splits.xml')
+    # right_eye_cascade = cv2.CascadeClassifier('haarcascade_righteye_2splits.xml')
+    # smile_cascade = cv2.CascadeClassifier('haarcascade_smile.xml')
+
+    img_counter = 0
+
+    x = int()
+    y = int()
+    w = int()
+    h = int()
+
+    ex = int()
+    ey = int()
+    center_ew = int()
+    center_eh = int()
+
+    while sign_exit:
+        ret = camera.read()
+        gray = cv2.cvtColor(frame, cv2.IMREAD_COLOR)  # or cv2.COLOR_BGR2GRAY as option
+        if not ret:
+            print("failed to grab frame")
+            break
+
+        h_half = round(5.5 / 8 * h)
+        restriction_of_eye_gray = gray[x: x + w, y: y + h_half]
+        restriction_of_eye_gray_color = frame[x: x + w, y: y + h_half]
+
+        current_time = time.perf_counter()
+
+        if current_time - prev_time >= 3:
+            print(current_time - prev_time)
+            prev_time = current_time
+
+            faces = face_cascade.detectMultiScale(gray, scaleFactor=1.03, minNeighbors=3, minSize=(30, 30),
+                                                  flags=cv2.CASCADE_SCALE_IMAGE)
+            eye = eye_cascade.detectMultiScale(restriction_of_eye_gray, scaleFactor=1.05, minNeighbors=4,
+                                               minSize=(2, 2), flags=cv2.CASCADE_SCALE_IMAGE)
+
+            for (x, y, w, h) in faces:
+                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)  # face
+                eye_detecting(x, y, w, h, gray, frame, eye_cascade, eye, h_half, restriction_of_eye_gray,
+                              restriction_of_eye_gray_color)
+
+        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)  # face
+        cv2.circle(restriction_of_eye_gray_color, (ex + center_ew, ey + center_eh), 20, (2, 244, 255), thickness=2,
+                   lineType=8, shift=0)  # eyes
+        cv2.imshow('computer camera online', frame)
+
+        k = cv2.waitKey(1)
+        if k != -1:
+            img_counter += 1
+            keyboard_input(frame, sign_exit, img_counter, k)
+    camera.release()
+    cv2.DestroyALLWIndows()
+
+
+def eye_detecting(x, y, w, h, gray, frame, eye_cascade, eye, h_half, restriction_of_eye_gray,
+                  restriction_of_eye_gray_color):
+    for (ex, ey, ew, eh) in eye:
+        center_ew = round(ew / 2)
+        center_eh = round(eh / 2)
+        cv2.circle(restriction_of_eye_gray_color, (ex + center_ew, ey + center_eh), 20, (2, 244, 255), thickness=2,
+                   lineType=8, shift=0)
+
+
+def keyboard_input(frame, sign_exit, img_counter, k):  # taking photo & exit
+    print(k)
+    if k == 13:  # ENTER pressed
+        print("Escape hit, closing...")
+        sign_exit = False
+        exit()
+    elif k == 32:  # SPACE pressed
+        img_name = "opencv_frame_{}.png".format(img_counter)
+        cv2.imwrite(img_name, frame)
+        print("{} written!".format(img_name))
+
+    return sign_exit, k
+
+
+def main():
+    sign_exit = True
+
+    while sign_exit:
+        face_capture(frame, sign_exit)
+
+
+main()
