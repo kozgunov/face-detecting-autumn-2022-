@@ -36,9 +36,7 @@ def face_capture(camera, sign_exit):
         restriction_of_eye_gray_color = frame[x: x + w, y: y + h_half]
 
         current_time = time.perf_counter()
-
         if current_time - prev_time >= 3:
-            print(current_time - prev_time)
             prev_time = current_time
 
             faces = face_cascade.detectMultiScale(gray, scaleFactor=1.03, minNeighbors=3, minSize=(30, 30),
@@ -47,13 +45,20 @@ def face_capture(camera, sign_exit):
                                                minSize=(2, 2), flags=cv2.CASCADE_SCALE_IMAGE)
 
             for (x, y, w, h) in faces:
-                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)  # face
+                #cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)  # face
                 eye_detecting(eye, restriction_of_eye_gray_color)
 
-        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)  # face
-        cv2.circle(restriction_of_eye_gray_color, (ex + center_ew, ey + center_eh), 20, (2, 244, 255), thickness=2,
-                   lineType=8, shift=0)  # eyes
+        center_ellipse_x = round(x + w/2)
+        center_ellipse_y = round(y + h/2)
+        axes_x = round((abs(w))/1.4)
+        axes_y = round(abs(h)/1.9)
+
+        print(axes_y, axes_x)
+
+        cv2.ellipse(frame, (center_ellipse_x, center_ellipse_y), (axes_x, axes_y), 90, 0, 360, (0, 255, 0), thickness=4)  # face
+        cv2.circle(restriction_of_eye_gray_color, (ex + center_ew, ey + center_eh), 20, (2, 244, 255), thickness=2, lineType=8, shift=0)  # eyes
         cv2.imshow('computer camera online', frame)
+        time.sleep(1)
 
         k = cv2.waitKey(1)
         if k != -1:
@@ -65,10 +70,11 @@ def face_capture(camera, sign_exit):
 
 def eye_detecting(eye, restriction_of_eye_gray_color):
     for (ex, ey, ew, eh) in eye:
+
         center_ew = round(ew / 2)
         center_eh = round(eh / 2)
-        cv2.circle(restriction_of_eye_gray_color, (ex + center_ew, ey + center_eh), 20, (2, 244, 255), thickness=2,
-                   lineType=8, shift=0)
+        cv2.circle(restriction_of_eye_gray_color, (ex - center_ew, ey - center_eh), 20, (2, 244, 255), thickness=2,
+                    lineType=8, shift=0)
 
 
 def keyboard_input(frame, sign_exit, img_counter, k):  # taking photo & exit
