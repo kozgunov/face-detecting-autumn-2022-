@@ -1,16 +1,18 @@
 import cv2
 import time
 
+debug = False
 
 def face_capture(camera, sign_exit):
     prev_time = time.perf_counter()
 
-    eye_cascade = cv2.CascadeClassifier('haarcascade_eye.xml')
-    face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
-
-    # left_eye_cascade = cv2.CascadeClassifier('haarcascade_lefteye_2splits.xml')
-    # right_eye_cascade = cv2.CascadeClassifier('haarcascade_righteye_2splits.xml')
+    # eye_cascade = cv2.CascadeClassifier('haarcascade_eye.xml')
     # smile_cascade = cv2.CascadeClassifier('haarcascade_smile.xml')
+
+    face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
+    left_eye_cascade = cv2.CascadeClassifier('haarcascade_lefteye_2splits.xml')
+    right_eye_cascade = cv2.CascadeClassifier('haarcascade_righteye_2splits.xml')
+
 
     img_counter = 0
 
@@ -18,11 +20,18 @@ def face_capture(camera, sign_exit):
     y = int()
     w = int()
     h = int()
-
-    ex = int()
-    ey = int()
-    center_ew = int()
-    center_eh = int()
+    lex = int()
+    ley = int()
+    lew = int()
+    leh = int()
+    rex = int()
+    rey = int()
+    rew = int()
+    reh = int()
+    center_ellipse_x = int()
+    center_ellipse_y = int()
+    axes_x = int()
+    axes_y = int()
 
     while sign_exit:
         ret, frame = camera.read()
@@ -31,34 +40,38 @@ def face_capture(camera, sign_exit):
             print("failed to grab frame")
             break
 
-        h_half = round(5.5 / 8 * h)
-        restriction_of_eye_gray = gray[x: x + w, y: y + h_half]
-        restriction_of_eye_gray_color = frame[x: x + w, y: y + h_half]
+        restriction_of_right_eye_gray_color = None
+        restriction_of_left_eye_gray_color = None
 
         current_time = time.perf_counter()
-        if current_time - prev_time >= 3:
+        if current_time - prev_time >= 0.01:
             prev_time = current_time
 
-            faces = face_cascade.detectMultiScale(gray, scaleFactor=1.03, minNeighbors=3, minSize=(30, 30),
-                                                  flags=cv2.CASCADE_SCALE_IMAGE)
-            eye = eye_cascade.detectMultiScale(restriction_of_eye_gray, scaleFactor=1.05, minNeighbors=4,
-                                               minSize=(2, 2), flags=cv2.CASCADE_SCALE_IMAGE)
+            faces = face_cascade.detectMultiScale(gray, scaleFactor=1.03, minNeighbors=3, minSize=(30, 30), flags=cv2.CASCADE_SCALE_IMAGE)
 
             for (x, y, w, h) in faces:
-                #cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)  # face
-                eye_detecting(eye, restriction_of_eye_gray_color)
+                center_ellipse_x = round(x + w / 2)
+                center_ellipse_y = round(y + h / 2)
+                axes_x = round((abs(w)) / 1.35)
+                axes_y = round(abs(h) / 1.85)
 
-        center_ellipse_x = round(x + w/2)
-        center_ellipse_y = round(y + h/2)
-        axes_x = round((abs(w))/1.4)
-        axes_y = round(abs(h)/1.9)
+                restriction_of_left_eye_gray = gray[y: y + round(1 / 2 * h), x + round(1 / 2 * w): x + w]
+                restriction_of_left_eye_gray_color = frame[y: y + round(1 / 2 * h), x + round(1 / 2 * w): x + w]
+                restriction_of_right_eye_gray = gray[y: y + round(1 / 2 * h), x: x + round(1 / 2 * w)]
+                restriction_of_right_eye_gray_color = frame[y: y + round(1 / 2 * h), x: x + round(1 / 2 * w)]
 
-        print(axes_y, axes_x)
+                left_eye = left_eye_cascade.detectMultiScale(restriction_of_left_eye_gray, scaleFactor=1.05, minNeighbors=3, minSize=(2, 2), flags=cv2.CASCADE_SCALE_IMAGE)
+                right_eye = right_eye_cascade.detectMultiScale(restriction_of_right_eye_gray, scaleFactor=1.05, minNeighbors=3, minSize=(2, 2), flags=cv2.CASCADE_SCALE_IMAGE)
+
+                for (rex, rey, reh, rew) in right_eye:
+                    pass
+                for (lex, ley, leh, lew) in left_eye:
+                    pass
 
         cv2.ellipse(frame, (center_ellipse_x, center_ellipse_y), (axes_x, axes_y), 90, 0, 360, (0, 255, 0), thickness=4)  # face
-        cv2.circle(restriction_of_eye_gray_color, (ex + center_ew, ey + center_eh), 20, (2, 244, 255), thickness=2, lineType=8, shift=0)  # eyes
+        cv2.circle(restriction_of_left_eye_gray_color, (lex + round(lew / 2), ley + round(leh / 2)), 15, (2, 244, 255), thickness=2, lineType=0, shift=0)  # eyes
+        cv2.circle(restriction_of_right_eye_gray_color, (rex + round(rew / 2), rey + round(reh / 2)), 20, (200, 2, 2), thickness=2, lineType=0, shift=0)  # eyes
         cv2.imshow('computer camera online', frame)
-        time.sleep(1)
 
         k = cv2.waitKey(1)
         if k != -1:
@@ -66,15 +79,6 @@ def face_capture(camera, sign_exit):
             keyboard_input(frame, sign_exit, img_counter, k)
     camera.release()
     cv2.DestroyALLWIndows()
-
-
-def eye_detecting(eye, restriction_of_eye_gray_color):
-    for (ex, ey, ew, eh) in eye:
-
-        center_ew = round(ew / 2)
-        center_eh = round(eh / 2)
-        cv2.circle(restriction_of_eye_gray_color, (ex - center_ew, ey - center_eh), 20, (2, 244, 255), thickness=2,
-                    lineType=8, shift=0)
 
 
 def keyboard_input(frame, sign_exit, img_counter, k):  # taking photo & exit
@@ -91,14 +95,16 @@ def keyboard_input(frame, sign_exit, img_counter, k):  # taking photo & exit
     return sign_exit, k
 
 
+def eye_detecting(ex, ey, eh, ew):
+    return ex, ey, eh, ew
+
+
 def main():
     sign_exit = True
 
     camera = cv2.VideoCapture(0)  # computer camera
     # camera = cv2.VideoCapture("Koijot.mp4 ")  # downloaded video
     cv2.namedWindow("computer camera online")
-
-
 
     while sign_exit:
         face_capture(camera, sign_exit)
