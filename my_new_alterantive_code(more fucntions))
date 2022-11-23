@@ -1,113 +1,111 @@
 import cv2
 import time
 
-debug = False
 
-def face_capture(camera, sign_exit):
-    prev_time = time.perf_counter()
-
-    # eye_cascade = cv2.CascadeClassifier('haarcascade_eye.xml')
-    # smile_cascade = cv2.CascadeClassifier('haarcascade_smile.xml')
-
-    face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
-    left_eye_cascade = cv2.CascadeClassifier('haarcascade_lefteye_2splits.xml')
-    right_eye_cascade = cv2.CascadeClassifier('haarcascade_righteye_2splits.xml')
-
-
-    img_counter = 0
-
-    x = int()
-    y = int()
-    w = int()
-    h = int()
-    lex = int()
-    ley = int()
-    lew = int()
-    leh = int()
-    rex = int()
-    rey = int()
-    rew = int()
-    reh = int()
-    center_ellipse_x = int()
-    center_ellipse_y = int()
-    axes_x = int()
-    axes_y = int()
-
-    while sign_exit:
-        ret, frame = camera.read()
-        gray = cv2.cvtColor(frame, cv2.IMREAD_COLOR)  # or cv2.COLOR_BGR2GRAY as option
-        if not ret:
-            print("failed to grab frame")
-            break
-
-        restriction_of_right_eye_gray_color = None
-        restriction_of_left_eye_gray_color = None
-
-        current_time = time.perf_counter()
-        if current_time - prev_time >= 0.01:
-            prev_time = current_time
-
-            faces = face_cascade.detectMultiScale(gray, scaleFactor=1.03, minNeighbors=3, minSize=(30, 30), flags=cv2.CASCADE_SCALE_IMAGE)
-
-            for (x, y, w, h) in faces:
-                center_ellipse_x = round(x + w / 2)
-                center_ellipse_y = round(y + h / 2)
-                axes_x = round((abs(w)) / 1.35)
-                axes_y = round(abs(h) / 1.85)
-
-                restriction_of_left_eye_gray = gray[y: y + round(1 / 2 * h), x + round(1 / 2 * w): x + w]
-                restriction_of_left_eye_gray_color = frame[y: y + round(1 / 2 * h), x + round(1 / 2 * w): x + w]
-                restriction_of_right_eye_gray = gray[y: y + round(1 / 2 * h), x: x + round(1 / 2 * w)]
-                restriction_of_right_eye_gray_color = frame[y: y + round(1 / 2 * h), x: x + round(1 / 2 * w)]
-
-                left_eye = left_eye_cascade.detectMultiScale(restriction_of_left_eye_gray, scaleFactor=1.05, minNeighbors=3, minSize=(2, 2), flags=cv2.CASCADE_SCALE_IMAGE)
-                right_eye = right_eye_cascade.detectMultiScale(restriction_of_right_eye_gray, scaleFactor=1.05, minNeighbors=3, minSize=(2, 2), flags=cv2.CASCADE_SCALE_IMAGE)
-
-                for (rex, rey, reh, rew) in right_eye:
-                    pass
-                for (lex, ley, leh, lew) in left_eye:
-                    pass
-
-        cv2.ellipse(frame, (center_ellipse_x, center_ellipse_y), (axes_x, axes_y), 90, 0, 360, (0, 255, 0), thickness=4)  # face
-        cv2.circle(restriction_of_left_eye_gray_color, (lex + round(lew / 2), ley + round(leh / 2)), 15, (2, 244, 255), thickness=2, lineType=0, shift=0)  # eyes
-        cv2.circle(restriction_of_right_eye_gray_color, (rex + round(rew / 2), rey + round(reh / 2)), 20, (200, 2, 2), thickness=2, lineType=0, shift=0)  # eyes
-        cv2.imshow('computer camera online', frame)
-
-        k = cv2.waitKey(1)
-        if k != -1:
-            img_counter += 1
-            keyboard_input(frame, sign_exit, img_counter, k)
-    camera.release()
-    cv2.DestroyALLWIndows()
-
-
-def keyboard_input(frame, sign_exit, img_counter, k):  # taking photo & exit
-    print(k)
+def keyboard_input(frame, sign_exit, img_counter):  # taking photo & exit
+    k = cv2.waitKey(1)
     if k == 13:  # ENTER pressed
         print("Escape hit, closing...")
         sign_exit = False
         exit()
+
     elif k == 32:  # SPACE pressed
         img_name = "opencv_frame_{}.png".format(img_counter)
         cv2.imwrite(img_name, frame)
         print("{} written!".format(img_name))
 
-    return sign_exit, k
+
+def draw(frame, faces):
+    for (x, y, w, h, eyes) in faces[0]:
+        cv2.ellipse(frame, (round(x + w / 2), round(y + h / 2)), (round((abs(w)) / 2), round(abs(h) / 2)), 0, 0, 360, (0, 255, 0), thickness=4)  # face
+        for (x1, y1, w1, h1) in eyes[0]:
+            cv2.circle(frame, (x + x1 + round(w1 / 2), y + y1 + round(h1 / 2)), 20, (100, 100, 255), thickness=2, lineType=0, shift=0)  # right eye
+        for (x1, y1, w1, h1) in eyes[1]:
+            cv2.circle(frame, (round((2*x + w)/2) + x1 + round(w1/2), y + y1 + round(h1 / 2)), 20, (200, 200, 200), thickness=2, lineType=0, shift=0)# letf eye
+    for (x, y, w, h, smile) in faces[1]:
+        for (x1, y1, w1, h1) in smile:
+            cv2.ellipse(frame, (x + round(w / 2), y + h - y1), (round(w1/2), round(h1/2)), 0, 0, 360, (0, 255, 200), thickness=4)  # smile
+
+    cv2.imshow('computer camera online', frame)
 
 
-def eye_detecting(ex, ey, eh, ew):
-    return ex, ey, eh, ew
+def timer_live(prev_time):
+    current_time = time.perf_counter()
+    if current_time - prev_time >= 3:
+        return True
+
+
+def detectEyes(x, y, w, h, frame):
+    gray = cv2.cvtColor(frame, cv2.IMREAD_COLOR)
+    left_eye_cascade = cv2.CascadeClassifier('haarcascade_lefteye_2splits.xml')
+    right_eye_cascade = cv2.CascadeClassifier('haarcascade_righteye_2splits.xml')
+
+    # место, где искать глаза
+    restriction_of_left_eye_gray = gray[y: y + round(1 / 2 * h), x + round(1 / 2 * w): x + w]
+    restriction_of_right_eye_gray = gray[y: y + round(1 / 2 * h), x: x + round(1 / 2 * w)]
+
+    # ищем по каскаду
+    right_eye = right_eye_cascade.detectMultiScale(restriction_of_right_eye_gray, scaleFactor=1.05, minNeighbors=3, minSize=(2, 2), flags=cv2.CASCADE_SCALE_IMAGE)
+    left_eye = left_eye_cascade.detectMultiScale(restriction_of_left_eye_gray, scaleFactor=1.05, minNeighbors=3, minSize=(2, 2), flags=cv2.CASCADE_SCALE_IMAGE)
+
+    return [right_eye, left_eye]
+
+
+def detect_mouth(x, y, w, h, frame):
+    gray = cv2.cvtColor(frame, cv2.IMREAD_COLOR)
+    smile_cascade = cv2.CascadeClassifier('haarcascade_smile.xml')
+    restriction_of_left_eye_gray = gray[y + round(h/2): y + h, x: x + w]
+
+    smile = smile_cascade.detectMultiScale(restriction_of_left_eye_gray, scaleFactor=1.1, minNeighbors=10, minSize=(5, 5), flags=cv2.CASCADE_SCALE_IMAGE)
+    return smile
+
+
+def detectFaces(frame):
+    face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
+    gray = cv2.cvtColor(frame, cv2.IMREAD_COLOR)
+    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.03, minNeighbors=5, minSize=(30, 30), flags=cv2.CASCADE_SCALE_IMAGE)
+
+    res_eyes = []
+    res_smile = []
+    for (x, y, w, h) in faces:
+        res_eyes.append([x, y, w, h, detectEyes(x, y, w, h, frame)])
+        res_smile.append([x, y, w, h, detect_mouth(x, y, w, h, frame)])
+
+    return [res_eyes, res_smile]
 
 
 def main():
+    # eye_cascade = cv2.CascadeClassifier('haarcascade_eye.xml')
+
     sign_exit = True
+    img_counter = 0
+    faces = None
 
     camera = cv2.VideoCapture(0)  # computer camera
     # camera = cv2.VideoCapture("Koijot.mp4 ")  # downloaded video
     cv2.namedWindow("computer camera online")
 
+    prev_time = time.perf_counter()
+
     while sign_exit:
-        face_capture(camera, sign_exit)
+        ret, frame = camera.read()
+        if not ret:
+            print("failed to grab frame")
+            break
+
+        current_time = time.perf_counter()
+        if current_time - prev_time >= 0.1:  # при секунде и более не видно глаз
+            prev_time = current_time
+            faces = detectFaces(frame)
+
+        draw(frame, faces)
+
+
+        # вывод некорректный
+        keyboard_input(frame, sign_exit, img_counter)
+
+    camera.release()
+    cv2.DestroyALLWIndows()
 
 
 main()
