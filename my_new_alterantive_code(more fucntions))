@@ -29,10 +29,17 @@ def draw(frame, faces):
     cv2.imshow('computer camera online', frame)
 
 
-def timer_live(prev_time):
+def timer_live(prev_time, one_second_stop):
     current_time = time.perf_counter()
-    if current_time - prev_time >= 3:
-        return True
+    if current_time - prev_time >= 1:
+
+        prev_time = current_time
+        one_second_stop = True
+    else:
+        one_second_stop = False
+    res = [one_second_stop, prev_time]
+
+    return res
 
 
 def detectEyes(x, y, w, h, frame):
@@ -86,6 +93,8 @@ def main():
     cv2.namedWindow("computer camera online")
 
     prev_time = time.perf_counter()
+    one_second_stop = True
+    k = True
 
     while sign_exit:
         ret, frame = camera.read()
@@ -93,15 +102,18 @@ def main():
             print("failed to grab frame")
             break
 
-        current_time = time.perf_counter()
-        if current_time - prev_time >= 0.1:  # при секунде и более не видно глаз
-            prev_time = current_time
+        if k:  # нужно, чтобы в начале в draw передавался faces
             faces = detectFaces(frame)
+            k = False
+
+        m = timer_live(prev_time, one_second_stop)
+
+        if m[0]:
+            faces = detectFaces(frame)
+            prev_time = m[1]
 
         draw(frame, faces)
 
-
-        # вывод некорректный
         keyboard_input(frame, sign_exit, img_counter)
 
     camera.release()
